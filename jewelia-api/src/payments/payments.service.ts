@@ -6,13 +6,18 @@ import { ShopsService } from '../shops/shops.service';
 
 @Injectable()
 export class PaymentsService {
-  private razor: Razorpay;
-  constructor(private readonly prisma: PrismaService, private readonly shops: ShopsService) {
-    this.razor = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID!, key_secret: process.env.RAZORPAY_KEY_SECRET! });
+  private razor?: Razorpay;
+  constructor(private readonly prisma: PrismaService, private readonly shops: ShopsService) {}
+
+  private getClient() {
+    if (!this.razor) {
+      this.razor = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID!, key_secret: process.env.RAZORPAY_KEY_SECRET! });
+    }
+    return this.razor;
   }
 
   async createMembershipOrder(shopId: string, plan: string, amount: number, currency = 'INR') {
-    const order = await this.razor.orders.create({ amount, currency, receipt: `m-${shopId}-${Date.now()}`, notes: { shopId, plan } });
+    const order = await this.getClient().orders.create({ amount, currency, receipt: `m-${shopId}-${Date.now()}`, notes: { shopId, plan } });
     await this.prisma.transaction.create({
       data: {
         shopId,
