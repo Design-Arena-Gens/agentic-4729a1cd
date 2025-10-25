@@ -24,6 +24,8 @@ async function bootstrap() {
     SwaggerModule.setup('docs', nest, doc);
   }
   await nest.init();
+  // Readiness probe
+  expressApp.get('/health', (_req, res) => res.json({ status: 'ok' }));
   return serverless(expressApp);
 }
 
