@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  customer
+  shop_owner
+  admin
+}
+
+enum MembershipStatus {
+  active
+  expired
+  cancelled
+  pending
+}
+
+enum TransactionStatus {
+  created
+  authorized
+  captured
+  failed
+  refunded
+}
+
+model User {
+  id            String     @id @default(cuid())
+  name          String
+  email         String     @unique
+  phone         String     @unique
+  passwordHash  String
+  role          UserRole   @default(customer)
+  createdAt     DateTime   @default(now())
+  shops         Shop[]
+  reviews       Review[]
+  wishlists     Wishlist[]
+  transactions  Transaction[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+}
+
+model City {
+  id      String   @id @default(cuid())
+  name    String
+  slug    String   @unique
+  state   String
+  seoMeta Json?
+  shops   Shop[]
+  products Product[]
+  @@index([state])
+}
+
+model Shop {
+  id                   String       @id @default(cuid())
+  ownerId              String
+  owner                User         @relation(fields: [ownerId], references: [id])
+  name                 String
+  cityId               String
+  city                 City         @relation(fields: [cityId], references: [id])
+  address              String
+  phone                String
+  whatsapp             String?
+  logoUrl              String?
+  membershipStatus     MembershipStatus @default(pending)
+  membershipStartedAt  DateTime?
+  membershipExpiresAt  DateTime?
+  verified             Boolean      @default(false)
+  lat                  Float?
+  lng                  Float?
+  products             Product[]
+  memberships          Membership[]
+  transactions         Transaction[]
+  leads                Lead[]
+  reviews              Review[]
+  auditLogs            AuditLog[]
+  createdAt            DateTime     @default(now())
+  @@index([cityId])
+  @@index([ownerId])
+}
+
+model Product {
+  id            String    @id @default(cuid())
+  shopId        String
+  shop          Shop      @relation(fields: [shopId], references: [id])
+  name          String
+  sku           String    @unique
+  description   String
+  priceInPaise  Int
+  currency      String    @default("INR")
+  purity        String?
+  weight        Float?
+  images        String[]
+  arModelUrl    String?
+  category      String
+  tags          String[]
+  cityId        String
+  city          City      @relation(fields: [cityId], references: [id])
+  createdAt     DateTime  @default(now())
+  verified      Boolean   @default(false)
+  leads         Lead[]
+  reviews       Review[]
+  auditLogs     AuditLog[]
+  wishlists     Wishlist[]
+  @@index([shopId])
+  @@index([cityId])
+  @@index([category])
+  @@index([name])
+}
+
+model Membership {
+  id            String            @id @default(cuid())
+  shopId        String
+  shop          Shop              @relation(fields: [shopId], references: [id])
+  plan          String
+  amount        Int
+  currency      String            @default("INR")
+  startedAt     DateTime
+  expiresAt     DateTime
+  status        MembershipStatus
+  transactionRef String?
+  createdAt     DateTime          @default(now())
+}
+
+model Transaction {
+  id                 String            @id @default(cuid())
+  userId             String?
+  user               User?             @relation(fields: [userId], references: [id])
+  shopId             String?
+  shop               Shop?             @relation(fields: [shopId], references: [id])
+  amount             Int
+  currency           String            @default("INR")
+  provider           String
+  providerPaymentId  String?           @unique
+  status             TransactionStatus @default(created)
+  payload            Json?
+  createdAt          DateTime          @default(now())
+  @@index([shopId])
+  @@index([userId])
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  shopId     String
+  shop       Shop     @relation(fields: [shopId], references: [id])
+  name       String
+  phone      String
+  message    String?
+  status     String   @default("new")
+  createdAt  DateTime @default(now())
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  shopId     String?
+  shop       Shop?    @relation(fields: [shopId], references: [id])
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id])
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+}
+
+model Wishlist {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  shopId     String?
+  shop       Shop?    @relation(fields: [shopId], references: [id])
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id])
+  action     String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  tokenHash  String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  @@index([userId])
+}
